@@ -1,147 +1,202 @@
-/// Microsoft identity platform authentication library.
-/// @nodoc
-@JS('aadOauth')
-library msauth;
-
 import 'dart:async';
 import 'dart:convert';
+import 'dart:js_interop';
 
 import 'package:aad_oauth/helper/core_oauth.dart';
 import 'package:aad_oauth/model/config.dart';
 import 'package:aad_oauth/model/failure.dart';
-import 'package:aad_oauth/model/msalconfig.dart';
 import 'package:aad_oauth/model/token.dart';
 import 'package:dartz/dartz.dart';
-import 'package:js/js.dart';
-import 'package:js/js_util.dart';
 
-@JS('init')
-external void jsInit(MsalConfig config);
+/// Bind to the existing global `window.aadOauth` object (not a constructor)
+@JS('aadOauth')
+@staticInterop
+class AadOauthJS {}
 
-@JS('login')
-external void jsLogin(
-  bool refreshIfAvailable,
-  bool useRedirect,
-  void Function(dynamic) onSuccess,
-  void Function(dynamic) onError,
-);
+@JS('aadOauth')
+external AadOauthJS get aadOauth;
 
-@JS('logout')
-external void jsLogout(
-  void Function() onSuccess,
-  void Function(dynamic) onError,
-  bool showPopup,
-);
+extension _AadOauthJSExt on AadOauthJS {
+  external void init(MsalConfigInterop config);
+  external JSPromise getAccessToken();
+  external JSPromise getIdToken();
+  external bool hasCachedAccountInformation();
+  external void login(
+    bool refreshIfAvailable,
+    bool useRedirect,
+    JSFunction onSuccess,
+    JSFunction onError,
+  );
+  external void refreshToken(
+    JSFunction onSuccess,
+    JSFunction onError,
+  );
+  external void logout(
+    JSFunction onSuccess,
+    JSFunction onError,
+    bool showPopup,
+  );
+}
 
-@JS('getAccessToken')
-external Object jsGetAccessToken();
+@JS()
+@staticInterop
+@anonymous
+class MsalConfigInterop {
+  external factory MsalConfigInterop({
+    required String tenant,
+    String? policy,
+    required String clientId,
+    required String responseType,
+    required String redirectUri,
+    required String scope,
+    String? responseMode,
+    String? state,
+    String? prompt,
+    String? codeChallenge,
+    String? codeChallengeMethod,
+    String? nonce,
+    String? tokenIdentifier,
+    String? clientSecret,
+    String? resource,
+    required bool isB2C,
+    String? customAuthorizationUrl,
+    String? customTokenUrl,
+    String? loginHint,
+    String? domainHint,
+    String? codeVerifier,
+    String? authorizationUrl,
+    String? tokenUrl,
+    required String cacheLocation,
+    required String customParameters,
+    String? postLogoutRedirectUri,
+  });
+}
 
-@JS('getIdToken')
-external Object jsGetIdToken();
-
-@JS('hasCachedAccountInformation')
-external bool jsHasCachedAccountInformation();
-
-@JS('refreshToken')
-external void jsRefreshToken(
-  void Function(dynamic) onSuccess,
-  void Function(dynamic) onError,
-);
+extension MsalConfigInteropProps on MsalConfigInterop {
+  external String get tenant;
+  external String? get policy;
+  external String get clientId;
+  external String get responseType;
+  external String get redirectUri;
+  external String get scope;
+  external String? get responseMode;
+  external String? get state;
+  external String? get prompt;
+  external String? get codeChallenge;
+  external String? get codeChallengeMethod;
+  external String? get nonce;
+  external String? get tokenIdentifier;
+  external String? get clientSecret;
+  external String? get resource;
+  external bool get isB2C;
+  external String? get customAuthorizationUrl;
+  external String? get customTokenUrl;
+  external String? get loginHint;
+  external String? get domainHint;
+  external String? get codeVerifier;
+  external String? get authorizationUrl;
+  external String? get tokenUrl;
+  external String get cacheLocation;
+  external String get customParameters;
+  external String? get postLogoutRedirectUri;
+}
 
 class WebOAuth extends CoreOAuth {
   final Config config;
+  final _js = aadOauth;
+
   WebOAuth(this.config) {
-    jsInit(MsalConfig.construct(
-        tenant: config.tenant,
-        policy: config.policy,
-        clientId: config.clientId,
-        responseType: config.responseType,
-        redirectUri: config.redirectUri,
-        scope: config.scope,
-        responseMode: config.responseMode,
-        state: config.state,
-        prompt: config.prompt,
-        codeChallenge: config.codeChallenge,
-        codeChallengeMethod: config.codeChallengeMethod,
-        nonce: config.nonce,
-        tokenIdentifier: config.tokenIdentifier,
-        clientSecret: config.clientSecret,
-        resource: config.resource,
-        isB2C: config.isB2C,
-        customAuthorizationUrl: config.customAuthorizationUrl,
-        customTokenUrl: config.customTokenUrl,
-        loginHint: config.loginHint,
-        domainHint: config.domainHint,
-        codeVerifier: config.codeVerifier,
-        authorizationUrl: config.authorizationUrl,
-        tokenUrl: config.tokenUrl,
-        cacheLocation: config.cacheLocation.value,
-        customParameters: jsonEncode(config.customParameters),
-        postLogoutRedirectUri: config.postLogoutRedirectUri));
+    _js.init(MsalConfigInterop(
+      tenant: config.tenant,
+      policy: config.policy,
+      clientId: config.clientId,
+      responseType: config.responseType,
+      redirectUri: config.redirectUri,
+      scope: config.scope,
+      responseMode: config.responseMode,
+      state: config.state,
+      prompt: config.prompt,
+      codeChallenge: config.codeChallenge,
+      codeChallengeMethod: config.codeChallengeMethod,
+      nonce: config.nonce,
+      tokenIdentifier: config.tokenIdentifier,
+      clientSecret: config.clientSecret,
+      resource: config.resource,
+      isB2C: config.isB2C,
+      customAuthorizationUrl: config.customAuthorizationUrl,
+      customTokenUrl: config.customTokenUrl,
+      loginHint: config.loginHint,
+      domainHint: config.domainHint,
+      codeVerifier: config.codeVerifier,
+      authorizationUrl: config.authorizationUrl,
+      tokenUrl: config.tokenUrl,
+      cacheLocation: config.cacheLocation.value,
+      customParameters: jsonEncode(config.customParameters),
+      postLogoutRedirectUri: config.postLogoutRedirectUri,
+    ));
   }
 
   @override
   Future<String?> getAccessToken() async {
-    return promiseToFuture(jsGetAccessToken());
+    final jsVal = await _js.getAccessToken().toDart;
+    return (jsVal as JSString?)?.toDart;
   }
 
   @override
   Future<String?> getIdToken() async {
-    return promiseToFuture(jsGetIdToken());
+    final jsVal = await _js.getIdToken().toDart;
+    return (jsVal as JSString?)?.toDart;
   }
 
   @override
-  Future<bool> get hasCachedAccountInformation =>
-      Future<bool>.value(jsHasCachedAccountInformation());
+  Future<bool> get hasCachedAccountInformation async =>
+      _js.hasCachedAccountInformation();
 
   @override
-  Future<Either<Failure, Token>> login(
-      {bool refreshIfAvailable = false}) async {
-    final completer = Completer<Either<Failure, Token>>();
-
-    jsLogin(
+  Future<Either<Failure, Token>> login({bool refreshIfAvailable = false}) {
+    final c = Completer<Either<Failure, Token>>();
+    _js.login(
       refreshIfAvailable,
       config.webUseRedirect,
-      allowInterop(
-          (value) => completer.complete(Right(Token(accessToken: value)))),
-      allowInterop((error) => completer.complete(Left(AadOauthFailure(
-            errorType: ErrorType.accessDeniedOrAuthenticationCanceled,
-            message:
-                'Access denied or authentication canceled. Error: ${error.toString()}',
-          )))),
+      ((JSString accessToken) {
+        c.complete(Right(Token(accessToken: accessToken.toDart)));
+      }).toJS,
+      ((JSAny error) {
+        c.complete(Left(AadOauthFailure(
+          errorType: ErrorType.accessDeniedOrAuthenticationCanceled,
+          message: 'Access denied or authentication canceled. Error: $error',
+        )));
+      }).toJS,
     );
-
-    return completer.future;
+    return c.future;
   }
 
   @override
   Future<Either<Failure, Token>> refreshToken() {
-    final completer = Completer<Either<Failure, Token>>();
-
-    jsRefreshToken(
-      allowInterop(
-          (value) => completer.complete(Right(Token(accessToken: value)))),
-      allowInterop((error) => completer.complete(Left(AadOauthFailure(
-            errorType: ErrorType.accessDeniedOrAuthenticationCanceled,
-            message:
-                'Access denied or authentication canceled. Error: ${error.toString()}',
-          )))),
+    final c = Completer<Either<Failure, Token>>();
+    _js.refreshToken(
+      ((JSString accessToken) {
+        c.complete(Right(Token(accessToken: accessToken.toDart)));
+      }).toJS,
+      ((JSAny error) {
+        c.complete(Left(AadOauthFailure(
+          errorType: ErrorType.accessDeniedOrAuthenticationCanceled,
+          message: 'Access denied or authentication canceled. Error: $error',
+        )));
+      }).toJS,
     );
-
-    return completer.future;
+    return c.future;
   }
 
   @override
-  Future<void> logout({bool showPopup = true, bool clearCookies = true}) async {
-    final completer = Completer<void>();
-
-    jsLogout(
-      allowInterop(completer.complete),
-      allowInterop((error) => completer.completeError(error)),
+  Future<void> logout({bool showPopup = true, bool clearCookies = true}) {
+    final c = Completer<void>();
+    _js.logout(
+      (() => c.complete()).toJS,
+      ((JSAny error) => c.completeError(error)).toJS,
       showPopup,
     );
-
-    return completer.future;
+    return c.future;
   }
 }
 
